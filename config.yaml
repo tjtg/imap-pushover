@@ -1,0 +1,22 @@
+server: imap.example.com
+port: 993
+ssl: true
+username: example_user
+password: example_password
+folder: INBOX
+sleep_time: 1750
+pushover_token: abcdefghijklmnopqrstuvwxyz
+pushover_user: 01234567890abcdefghijklmno
+pushover_sound: pushover
+pushover_device: ~
+pushover_url: http://mail.example.com
+pushover_url_title: Read mail
+pushover_retry: 60
+pushover_expire: 300
+body_length: 200
+notify_words:
+  important: 1
+  gmail: 0
+  hotmail: 0
+  outlook: 0
+  ' ': -1
