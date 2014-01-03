@@ -56,6 +56,7 @@ def checkForUnread imap
       # not multipart, just grab whatever's there
       bodytext = mail.body.to_s
     end
+    bodytext = bodytext.force_encoding(mail.charset)
     bodytext = Loofah::fragment(bodytext).to_text
     #replace whitespace with a single space
     bodytext.gsub!(/\s+/, ' ')
