@@ -7,13 +7,22 @@ require 'rubygems'
 require 'mail'
 require 'pushover'
 require 'loofah'
+require 'daemons'
+
+#globals for config and message UIDs seen
+current_dir = File.expand_path(File.dirname(__FILE__))
+$config = YAML.load_file(current_dir + '/config.yaml')
+$uids_seen = []
+
+daemon_options = {:multiple => false, :backtrace => true, :monitor => true,
+  :log_output => true}
 
 def puts_log str
   puts "[#{Time.now.to_s}] #{str}"
   STDOUT.flush
 end
 
-def openNewConnection
+def open_imap
   puts_log "Opening new IMAP connection"
   imap = Net::IMAP.new($config['server'], $config['port'], :ssl => $config['ssl'])
   imap.login($config['username'], $config['password'])
@@ -23,7 +32,7 @@ def openNewConnection
   return imap
 end
 
-def checkForUnread imap
+def check_unread imap
   puts_log "Checking for unread messages"
   status = imap.status($config['folder'], ['MESSAGES','UNSEEN','RECENT'])
   imap.uid_search(['UNSEEN']).each do |msg_id|
@@ -67,7 +76,7 @@ def checkForUnread imap
   end
 end
 
-def filterSend(name, addr, subj, body)
+def filter_and_send (name, addr, subj, body)
   combined = "#{name}\n#{addr}\n#{subj}\n#{body}"
   combined.downcase!
   no_priority = -1000
@@ -82,7 +91,7 @@ def filterSend(name, addr, subj, body)
   sendPushover(name, addr, subj, body, best_priority) if best_priority > no_priority
 end
 
-def sendPushover(name, addr, subj, body, priority_num)
+def send_pushover (name, addr, subj, body, priority_num)
   short_body = body.slice(0..$config['body_length'])
   short_body = "no mail body" if short_body.length == 0
   combined_title = name.to_s.length > 0 ? "#{name} - #{subj}" : "#{addr} - #{subj}"
@@ -100,31 +109,25 @@ def sendPushover(name, addr, subj, body, priority_num)
   puts_log "Notification sent to Pushover, response #{status_request.to_s}"
 end
 
-#globals for config and message UIDs seen
-currentDir = File.expand_path(File.dirname(__FILE__))
-$config = YAML.load_file(currentDir + '/config.yaml')
-$uids_seen = []
-
-imap = openNewConnection
-checkForUnread imap
-loop do
-  imap = openNewConnection if imap.disconnected?
+def idle_loop imap_conn
+  imap_conn = open_imap if imap_conn.nil? or imap_conn.disconnected?
+  check_unread imap_conn
   Thread.new do
     sleep $config['sleep_time']
     puts_log "Ending IDLE"
-    imap.idle_done
+    imap_conn.idle_done
     puts_log "IDLE ended"
   end
   begin
     puts_log "Starting IDLE"
-    imap.idle do |resp|
+    imap_conn.idle do |resp|
       if resp.kind_of?(Net::IMAP::ContinuationRequest) and resp.data.text == 'idling'
         puts_log "IMAP IDLE continuation request received"
       end
       if resp.kind_of?(Net::IMAP::UntaggedResponse) and resp.name == 'EXISTS'
         puts_log "New message exists, opening another connection to retrieve it"
-        imap2 = openNewConnection
-        checkForUnread imap2
+        imap2 = open_imap
+        check_unread imap2
         imap2.logout
       end
     end
@@ -132,6 +135,13 @@ loop do
     puts_log "Connection reset by peer"
   rescue Net::IMAP::Error => error
     puts_log "IMAP error : #{error.inspect}"
-    imap.disconnect
+    imap_conn.disconnect
+  end
+end
+
+imap_conn = nil
+Daemons.run_proc 'imap-pushover.rb', daemon_options do
+  loop do
+    idle_loop imap_conn
   end
 end

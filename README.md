@@ -7,9 +7,7 @@ The Pushover notification can contain a link to read the rest of the email using
 ## Requirements
 
 - Ruby 1.9.3+
-- Rubygems: mail, pushover and loofah
-
-A terminal multiplexer such as tmux or screen or a terminal detacher such as dtach, disown or nohup is useful to disconnect this program from the terminal after starting it.
+- Rubygems: mail, pushover, loofah, daemons
 
 ## Configuration
 
@@ -17,6 +15,15 @@ Edit config.yaml with your own settings for the IMAP mail server and Pushover. Y
 
 notify_words sets the priority of different emails (for example, mailing list discussion vs things that should wake you up in the middle of the night).
 In the configuration file, it's expressed as a mapping of strings to [Pushover API priorities](https://pushover.net/api#priority). The highest priority found in the email is used for the Pushover message. A single space will match any email.
+
+## Use
+
+```sh
+./imap-pushover.rb start
+./imap-pushover.rb stop
+./imap-pushover.rb restart
+./imap-pushover.rb run # run in foreground for testing/debugging
+```
 
 ## Thanks
 
