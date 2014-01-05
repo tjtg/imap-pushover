@@ -71,7 +71,7 @@ def check_unread imap
     bodytext.gsub!(/\s+/, ' ')
     #remove leading/trailing whitespace
     bodytext.strip!
-    filterSend(name, addr, subj, bodytext)
+    filter_and_send(name, addr, subj, bodytext)
     $uids_seen << msg_id
   end
 end
@@ -88,7 +88,7 @@ def filter_and_send (name, addr, subj, body)
     end
   end
   puts_log "Pushover priority #{best_priority}"
-  sendPushover(name, addr, subj, body, best_priority) if best_priority > no_priority
+  send_pushover(name, addr, subj, body, best_priority) if best_priority > no_priority
 end
 
 def send_pushover (name, addr, subj, body, priority_num)
