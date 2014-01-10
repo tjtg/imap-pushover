@@ -7,7 +7,7 @@ The Pushover notification can contain a link to read the rest of the email using
 ## Requirements
 
 - Ruby 1.9.3+
-- Rubygems: mail, pushover, loofah, daemons
+- Rubygems: mail, pushover, loofah, daemons, scrub_rb
 
 ## Configuration
 

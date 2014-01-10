@@ -8,6 +8,7 @@ require 'mail'
 require 'pushover'
 require 'loofah'
 require 'daemons'
+require 'scrub_rb'
 
 #globals for config and message UIDs seen
 current_dir = File.expand_path(File.dirname(__FILE__))
@@ -65,9 +66,17 @@ def check_unread imap
       # not multipart, just grab whatever's there
       bodytext << mail.body.to_s
     end
-    bodytext = bodytext.force_encoding(mail.charset) if not mail.charset.nil?
+    # apply charset if available, otherwise assume utf-8
+    if not mail.charset.nil?
+      bodytext = bodytext.force_encoding(mail.charset)
+    else
+      bodytext = bodytext.force_encoding('utf-8')
+    end
+    #remove any characters that are invalid in encoding
+    bodytext.scrub!('')
+    #convert html to text
     bodytext = Loofah::fragment(bodytext).to_text
-    #replace whitespace with a single space
+    #replace repeated whitespace with a single space
     bodytext.gsub!(/\s+/, ' ')
     #remove leading/trailing whitespace
     bodytext.strip!
