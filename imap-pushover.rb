@@ -23,6 +23,54 @@ def puts_log str
   STDOUT.flush
 end
 
+def flatten_parts parts
+  flat_array = []
+  parts.each do |p|
+    if p.parts.length > 0
+      flat_subarray = flatten_parts p.parts
+      flat_array.concat flat_subarray
+    else
+      flat_array << p
+    end
+  end
+  return flat_array
+end
+
+def mail_to_text mail
+  bodytext = ""
+  #mail should be a Mail::Message object
+  if mail.multipart?
+    flattened = flatten_parts mail.parts
+    text_parts = flattened.select { |p| p.content_type.include? 'text/plain' }
+    html_parts = flattened.select { |p| p.content_type.include? 'text/html' }
+    # try to find a plaintext mime part
+    if text_parts.size > 0
+      text_parts.each { |p| bodytext << p.body.to_s }
+    # no plaintext, fallback to html
+    elsif html_parts.size > 0
+      html_parts.each { |p| bodytext << p.body.to_s }
+    end
+  else
+    # not multipart, just grab whatever's there
+    bodytext << mail.body.to_s
+  end
+  # apply charset if available, otherwise assume utf-8
+  if not mail.charset.nil?
+    bodytext = bodytext.force_encoding(mail.charset)
+  else
+    bodytext = bodytext.force_encoding('utf-8')
+  end
+  #remove any characters that are invalid in encoding
+  bodytext.scrub!('')
+  #convert html to text
+  bodytext = Loofah::fragment(bodytext).to_text
+  #replace repeated whitespace with a single space
+  bodytext.gsub!(/\s+/, ' ')
+  #remove leading/trailing whitespace
+  bodytext.strip!
+  return bodytext
+end
+
 def open_imap
   puts_log "Opening new IMAP connection"
   imap = Net::IMAP.new($config['server'], $config['port'], :ssl => $config['ssl'])
@@ -52,34 +100,7 @@ def check_unread imap
     mail = Mail.read_from_string(rfc[0].attr['RFC822'])
     name = mail[:from].display_names.first
     subj = mail.subject
-    if mail.multipart?
-      text_parts = mail.parts.select { |p| p.content_type.include? 'text/plain' }
-      html_parts = mail.parts.select { |p| p.content_type.include? 'text/html' }
-      # try to find a plaintext mime part
-      if text_parts.size > 0
-        text_parts.each { |p| bodytext << p.body.to_s }
-      # no plaintext, fallback to html
-      elsif html_parts.size > 0
-        html_parts.each { |p| bodytext << p.body.to_s }
-      end
-    else
-      # not multipart, just grab whatever's there
-      bodytext << mail.body.to_s
-    end
-    # apply charset if available, otherwise assume utf-8
-    if not mail.charset.nil?
-      bodytext = bodytext.force_encoding(mail.charset)
-    else
-      bodytext = bodytext.force_encoding('utf-8')
-    end
-    #remove any characters that are invalid in encoding
-    bodytext.scrub!('')
-    #convert html to text
-    bodytext = Loofah::fragment(bodytext).to_text
-    #replace repeated whitespace with a single space
-    bodytext.gsub!(/\s+/, ' ')
-    #remove leading/trailing whitespace
-    bodytext.strip!
+    bodytext = mail_to_text mail
     filter_and_send(name, addr, subj, bodytext)
     $uids_seen << msg_id
   end
