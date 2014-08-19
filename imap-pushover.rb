@@ -7,6 +7,7 @@ require 'rubygems'
 require 'mail'
 require 'pushover'
 require 'loofah'
+require 'loofah/helpers'
 require 'daemons'
 require 'scrub_rb'
 
