@@ -25,6 +25,10 @@ In the configuration file, it's expressed as a mapping of strings to [Pushover A
 ./imap-pushover.rb run # run in foreground for testing/debugging
 ```
 
+## See also
+
+The newer Javascript/node.js version: https://github.com/tjtg/imap-pushover2/
+
 ## Thanks
 
 - imap-idle-notify https://github.com/mlux/imap-idle-notify
